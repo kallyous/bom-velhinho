@@ -1,5 +1,7 @@
 tabuleiro = []
 
+def WinCheck(tabuleiro):
+    '''checa se a condicao de vitaria foi atingida'''
 def leTabuleiro(tabuleiro):
     '''varrer o tabuleiro e printar o estado atual'''
 
@@ -17,12 +19,12 @@ def menu():
         if option == 1:
             print('solicita ip e conecta')
         elif option == 2:
-            print('informa ip e aguarda conexão')
+            print('informa ip e aguarda conexao')
         else:
-            print('finalizando, até mais')
+            print('finalizando, ate mais')
 
     else:
-        print('opção inválida, retornando ao menu')
+        print('opcao invalida, retornando ao menu')
         menu()
 
 def jogo():
@@ -35,7 +37,7 @@ def jogo():
           '_|_|_\n'
           '_|_|_\n'
           'Hospedeiro[O], Visitante[X]\n'
-          'O hospedeiro começa jogando')
+          'O hospedeiro comeca jogando')
     for n in range(9):
         '''como receber as duas variaveis de uma vez e ja colocar na matriz do tabuleiro?'''
         jogada = input('jogada '+n+'\nDigite Linha e Coluna')
