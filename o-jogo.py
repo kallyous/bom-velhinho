@@ -24,6 +24,7 @@ ESTADO DE JOGO
 válida ou ilegal. Nesse contexto o caracter estará definido para 1 se a jogada
 foi válida. No caso de 0 (jogada anterior foi inválida) o estado de jogo não
 é atualizado pelo servidor e sua resposta apenas defini esse caracter para 0.
+O servidor usa também esse caracter para indicar desistência.
 
 [1] O segundo caracter indica se uma condição de fim de jogo foi alcançada.
 Se um jogador venceu, o caracter 2 será definido para o símbolo do vencedor
@@ -65,7 +66,8 @@ JOGADA
 """
 
 ESTADO_INICIAL = b'1 0         '
-
+SERVIDOR = 'X'
+CLIENTE = 'O'
 
 class GameSocket:
     MSGLEN = 12
@@ -120,15 +122,22 @@ class GameSocket:
 def renderiza_jogo(estado):
 
     estado = estado.decode('utf-8')
+    tabuleiro = estado[3:]
+    meta = estado[:3]
 
     print("\n JOGADA ", estado[1], ", estado do jogo:", sep='')
 
-    i = 3;
+    # DEBUG
+    print(estado.replace(' ', '_'),
+          meta.replace(' ', '_'),
+          tabuleiro.replace(' ', '_'))
+
+    i = 0
     render = '\n'
     for y in range(0, 3):
         render += '\t'
         for x in range(0, 3):
-            render += estado[i]
+            render += tabuleiro[i]
             if x < 2:
                 render += ' | '
             else:
@@ -138,7 +147,7 @@ def renderiza_jogo(estado):
             render += '\t---------\n'
     print(render)
 
-    if estado[0] != ' ':
+    if meta[1] != ' ':
         print("\nVitória de", estado[0].upper(), '\n')
     else:
         print("\n Escolha sua próxima jogada pela numeração das casas:")
@@ -193,11 +202,26 @@ def jogada_valida(estado, jogada):
     return True
 
 
-def atualiza_estado_jogo(estado, jogada):
+def atualiza_estado_jogo(estado, jogada, jogador):
+    """ Apenas o servidor atualiza efetivamente o estado.
+        O cliente usa esta função apenas pra poder rederizar sua própria
+        jogada declarada, antes do servidor validá-la."""
+
+    jogador = jogador.strip().upper()
     estado = estado.decode('utf-8')
     jogada = jogada.decode('utf-8')
-    i = int(jogada.strip())
-    estado = estado[:i] + 'O' + estado[i+1:]
+
+    # Põe 'd' na primeira posição indicando desistência do servidor.
+    if 'd' in jogada:
+        estado = 'd' + estado[1:]
+
+    # Marca X ou O no índice declarado da jogada.
+    else:
+        # Extrai a posição no tabuleiro informada na jogada e adiciona
+        # o deslocamento/offset pra string do estado de jogo.
+        i = int(jogada.strip()) + 2
+        estado = estado[:i] + jogador + estado[i+1:]
+
     return estado.encode('utf-8')
 
 
@@ -208,13 +232,6 @@ def servir_partida():
     serv_sock = GameSocket()
     serv_sock.bind(('', GameSocket.PORT))
     serv_sock.listen(2)
-
-    # TESTES BEM SUCEDIDOS
-    # client_sock, address = serv_sock.accept()
-    # print(" Conexão estabelecida com", address)
-    # client_sock.send(ESTADO_INICIAL)
-    # jogada = client_sock.recv().decode('utf-8')
-    # print("RECEBIDO:\n\t", jogada)
 
     # Laço para aguardar conexões de clientes.
     while True:
@@ -247,7 +264,7 @@ def servir_partida():
                     continue
 
                 # Atualiza e renderiza estado do jogo.
-                estado_jogo = atualiza_estado_jogo(estado_jogo, jogada)
+                estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, CLIENTE)
                 renderiza_jogo(estado_jogo)
 
                 # Checa condição de vitória e, se for o caso, encerra jogo.
@@ -266,13 +283,21 @@ def servir_partida():
                     break
 
                 # Atualiza estado do jogo com nova jogada.
-                estado_jogo = atualiza_estado_jogo(estado_jogo, jogada)
+                estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, SERVIDOR)
                 renderiza_jogo(estado_jogo)
 
                 # Verifica condição de vitória novamente.
 
         except KeyboardInterrupt:
             break
+
+        # Importante fechar os sockets.
+        try:
+            client_sock.shutdown(2)
+            client_sock.close()
+        # Se o servidor fechou a conexão antes, não quebra o jogo.
+        except Exception:
+            pass
 
     # Importante fechar os sockets.
     try:
@@ -293,11 +318,6 @@ def conectar_partida():
 
     print(" Conexão estabelecida, iniciando partida.")
 
-    # TESTES BEM SUCEDIDOS
-    # estado_jogo = client_sock.recv()
-    # renderiza_jogo(estado_jogo)
-    # client_sock.send("FUNCIONA FDP".encode('utf-8'))
-
     # Rotina de cliente do jogo vem aqui.
     while True:
 
@@ -306,6 +326,11 @@ def conectar_partida():
 
         # Interpreta estado de jogo e exibe ao jogador.
         renderiza_jogo(estado_jogo)
+
+        # Saída antecipada.
+        if desistencia(estado_jogo):
+            encerra_partida('desistencia-oponente')
+            break
 
         # Pega jogada do cliente.
         jogada = seleciona_jogada()
@@ -322,7 +347,7 @@ def conectar_partida():
             break
 
         # Exibe suposto estado atual do jogo (o servidor é o árbitro final).
-        estado_jogo = atualiza_estado_jogo(estado_jogo, jogada)
+        estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, CLIENTE)
         renderiza_jogo(estado_jogo)
 
     # Importante fechar os sockets.
