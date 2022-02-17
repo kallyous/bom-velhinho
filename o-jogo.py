@@ -189,17 +189,16 @@ def servir_partida():
                 # Envia estado atual do jogo.
                 client_sock.send(estado_jogo)
 
-                # TESTES
                 # Recebe jogada do cliente.
                 jogada = client_sock.recv()
-                print(jogada.decode('utf-8'))
-                break
 
-                # Verifica se jogada é válida.
-                # if valida_jogada(estado_jogo, jogada):
-                #     estado_jogo = atualiza_estado_jogo(estado_jogo, jogada)
-                # else:
-                #     client_sock.send(estado_jogo)
+                #Verifica se jogada é válida.
+                if valida_jogada(estado_jogo, jogada):
+                    estado_jogo = atualiza_estado_jogo(estado_jogo, jogada)
+                else:
+                    client_sock.send(estado_jogo)
+
+                rendereiza_jogo(estado_jogo)
 
                 # Checa condição de vitória e, se for o caso, encerra jogo.
 
@@ -218,8 +217,12 @@ def servir_partida():
     print("\n Partida encerrada.")
 
     # Importante fechar os sockets.
-    client_sock.shutdown(2)
-    client_sock.close()
+    try:
+        client_sock.shutdown(2)
+        client_sock.close()
+    # Se o cliente fechou a conexão antes, não quebra o jogo.
+    except Exception:
+        pass
     serv_sock.shutdown(2)
     serv_sock.close()
 
@@ -248,10 +251,6 @@ def conectar_partida():
         # Interpreta estado de jogo e exibe ao jogador.
         rendereiza_jogo(estado_jogo)
 
-        client_sock.send("FUNCIONA FDP".encode('utf-8'))
-
-        break
-
         while True:
             casa_valida = True
 
@@ -268,15 +267,18 @@ def conectar_partida():
             if casa_valida:
                 break
             else:
-                print("", casa,
-                      "não é um valor válido, escolha uma casa de 1 a 9.\n")
+                print("", casa, "não é um valor válido, escolha uma casa de 1 a 9.\n")
 
         client_sock.send(jogada.encode('utf-8'))
         break
 
     # Importante fechar os sockets.
-    client_sock.shutdown(2)
-    client_sock.close()
+    try:
+        client_sock.shutdown(2)
+        client_sock.close()
+    # Se o servidor fechou a conexão antes, não quebra o jogo.
+    except Exception:
+        pass
 
 
 def creditos():
