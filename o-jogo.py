@@ -65,7 +65,7 @@ JOGADA
 
 """
 
-ESTADO_INICIAL = b'1 0         '
+ESTADO_INICIAL = b'1 1         '
 SERVIDOR = 'X'
 CLIENTE = 'O'
 PADROES_VITORIA = [
@@ -81,7 +81,7 @@ PADROES_VITORIA = [
 
 class GameSocket:
     MSGLEN = 12
-    PORT = 6667
+    PORT = 6666
 
     def __init__(self, sock=None):
         if sock is None:
@@ -129,18 +129,14 @@ class GameSocket:
         self.sock.close()
 
 
-def renderiza_jogo(estado):
+def renderiza_jogo(estado, turno_real=True):
 
     estado = estado.decode('utf-8')
     tabuleiro = estado[3:]
-    meta = estado[:3]
 
-    print("\n JOGADA ", estado[1], ", estado do jogo:", sep='')
-
-    # DEBUG
-    print(estado.replace(' ', '_'),
-          meta.replace(' ', '_'),
-          tabuleiro.replace(' ', '_'))
+    if turno_real:
+        print('-'*80)
+        print(" TURNO ", estado[2], ", tabuleiro:", sep='')
 
     i = 0
     render = '\n'
@@ -157,12 +153,6 @@ def renderiza_jogo(estado):
             render += '\t---------\n'
     print(render)
 
-    if meta[1] != ' ':
-        print("\nVitória de", estado[1].upper(), '\n')
-    else:
-        print("\n Escolha sua próxima jogada pela numeração das casas:")
-        print("\n   1 | 2 | 3\n   ---------\n   4 | 5 | 6\n   ---------\n   7 | 8 | 9\n")
-
 
 def seleciona_jogada():
 
@@ -170,7 +160,9 @@ def seleciona_jogada():
     while not jogada_valida:
 
         try:
-            jogada = input(" Onde marcar? ").strip().lower()
+            print("\n numeração das casas:")
+            print("\n   1 | 2 | 3\n   ---------\n   4 | 5 | 6\n   ---------\n   7 | 8 | 9\n")
+            jogada = input(" Marcar em: ").strip().lower()
             if jogada != 'd':
                 jogada = int(jogada)
                 if jogada in range(1, 10):
@@ -184,6 +176,7 @@ def seleciona_jogada():
             print(" use D para abandonar partida.")
 
     jogada = f"   {jogada}        "
+    print()
     return jogada.encode('utf-8')
 
 
@@ -235,7 +228,7 @@ def encerra_partida(motivo=None):
     elif motivo == 'vitoria':
         print("\n VITÓRIA!\n Você derrotou seu oponente.\n")
     elif motivo == 'derrota':
-        print("\n DERROTA...\n O Jogo. Você perdeu.  Sim.\n")
+        print("\n DERROTA...\n O Jogo. Você perdeu. Sim.\n")
     else:
         print('\n Jogo encerrado por motivo desconhecido.\n')
 
@@ -243,7 +236,17 @@ def encerra_partida(motivo=None):
 
 
 def jogada_valida(estado, jogada):
-    return True
+
+    try:
+        tabuleiro = estado.decode('utf-8')[3:]
+        indice_jogada = int(jogada.decode('utf-8').strip()) - 1
+    except Exception:
+        return False
+
+    if tabuleiro[indice_jogada] == ' ':
+        return True
+    else:
+        return False
 
 
 def atualiza_estado_jogo(estado, jogada, jogador):
@@ -270,6 +273,14 @@ def atualiza_estado_jogo(estado, jogada, jogador):
         if vitoria(estado, jogador):
             estado = estado[:1] + jogador + estado[2:]
 
+        # Atualiza contador de rodada.
+        if jogador.upper() == SERVIDOR:
+            try:
+                rodada = int(estado[2]) + 1
+            except ValueError:
+                rodada = 1
+            estado = estado[:2] + f'{rodada}' + estado[3:]
+
 
     return estado.encode('utf-8')
 
@@ -290,10 +301,12 @@ def servir_partida():
 
             # Aceita conexão vinda de fora no nosso amado socket.
             client_sock, address = serv_sock.accept()
-            print(" Conexão estabelecida com", address)
+            print(" Conexão estabelecida com", address, "iniciando jogo.\n")
 
             # Estado inicial do jogo.
             estado_jogo = ESTADO_INICIAL
+            renderiza_jogo(estado_jogo)
+            print(" Aguardando jogada inicial do cliente.\n")
 
             # Rotina de servidor do jogo vem aqui.
             while True:
@@ -331,7 +344,7 @@ def servir_partida():
 
                 # Atualiza estado do jogo com nova jogada.
                 estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, SERVIDOR)
-                renderiza_jogo(estado_jogo)
+                renderiza_jogo(estado_jogo, False)
 
                 # Checa se jogar local desistiu.
                 if desistencia(jogada):
@@ -373,7 +386,7 @@ def conectar_partida():
     client_sock = GameSocket()
     client_sock.connect(serv_addr, GameSocket.PORT)
 
-    print(" Conexão estabelecida, iniciando partida.")
+    print(" Conexão estabelecida, iniciando partida.\n")
 
     # Rotina de cliente do jogo vem aqui.
     while True:
@@ -415,7 +428,8 @@ def conectar_partida():
 
         # Exibe suposto estado atual do jogo (o servidor é o árbitro final).
         estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, CLIENTE)
-        renderiza_jogo(estado_jogo)
+        print(" Enviado ao servidor:")
+        renderiza_jogo(estado_jogo, False)
 
     # Importante fechar os sockets.
     try:
