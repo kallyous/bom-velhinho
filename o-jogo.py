@@ -194,23 +194,28 @@ def desistencia(jogada):
 
 
 def padrao_de_jogo(estado, jogador):
+
+    try:
+        estado = estado.decode('utf-8')
+    except Exception:
+        pass
+
     tabuleiro = estado[3:].upper()
     tabuleiro = tabuleiro.replace(jogador.upper(), '1')
     tabuleiro = tabuleiro.replace(SERVIDOR.upper(), '0')
     tabuleiro = tabuleiro.replace(CLIENTE.upper(), '0')
     tabuleiro = tabuleiro.replace(' ', '0')
+
     return tabuleiro
 
 
 def padrao_vitorioso(padrao):
-    print(" DEBUG padrao_vitorioso()\n", "123456789\n", padrao)
     for pv in PADROES_VITORIA:
         acerto = 0
         for i in range(0, len(pv)):
             if padrao[i] == pv[i]:
                 acerto += 1
         if acerto == 3:
-            print("DEBUG padrao_vitorioso() - VITORIA\n", padrao, "\n", pv, "\n")
             return True
     return False
 
@@ -220,7 +225,7 @@ def vitoria(estado, jogador):
     return padrao_vitorioso(padrao)
 
 
-def encerra_partida(motivo):
+def encerra_partida(motivo=None):
     if motivo == 'desistencia-propria':
         print("\n DERROTA...\n Você desistiu da partida.\n")
     elif motivo == 'desistencia-oponente':
@@ -229,8 +234,10 @@ def encerra_partida(motivo):
         print("\n EMPATE.\n Ninguém venceu essa.")
     elif motivo == 'vitoria':
         print("\n VITÓRIA!\n Você derrotou seu oponente.\n")
+    elif motivo == 'derrota':
+        print("\n DERROTA...\n O Jogo. Você perdeu.  Sim.\n")
     else:
-        print("\n DERROTA...\n O Jogo. Sim. Você perdeu.\n")
+        print('\n Jogo encerrado por motivo desconhecido.\n')
 
     input(" Pressione [Enter] pra continuar.")
 
@@ -310,7 +317,10 @@ def servir_partida():
                 renderiza_jogo(estado_jogo)
 
                 # Checa condição de vitória e, se for o caso, encerra jogo.
-                # TODO
+                if vitoria(estado_jogo, CLIENTE):
+                    client_sock.send(estado_jogo)
+                    encerra_partida('derrota')
+                    break
 
                 # Se jogo continua, pega jogada do jogador local e valida
                 # contra o estado atual do jogo.
@@ -323,12 +333,17 @@ def servir_partida():
                 estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, SERVIDOR)
                 renderiza_jogo(estado_jogo)
 
+                # Checa se jogar local desistiu.
                 if desistencia(jogada):
                     client_sock.send(estado_jogo)
                     encerra_partida('desistencia-propria')
                     break
 
                 # Verifica condição de vitória novamente.
+                if vitoria(estado_jogo, SERVIDOR):
+                    client_sock.send(estado_jogo)
+                    encerra_partida('vitoria')
+                    break
 
         except KeyboardInterrupt:
             break
@@ -363,15 +378,25 @@ def conectar_partida():
     # Rotina de cliente do jogo vem aqui.
     while True:
 
-        # Recebe um byte obj, decoda passa pra string em UTF-8.
+        # Recebe do servidor o estado do jogo.
         estado_jogo = client_sock.recv()
 
         # Interpreta estado de jogo e exibe ao jogador.
         renderiza_jogo(estado_jogo)
 
-        # Saída antecipada.
+        # Servidor desistiu da partida.
         if desistencia(estado_jogo):
             encerra_partida('desistencia-oponente')
+            break
+
+        # Checa se servidor venceu a partida.
+        if vitoria(estado_jogo, SERVIDOR):
+            encerra_partida('derrota')
+            break
+
+        # Checa se o jogador local venceu a partida.
+        if vitoria(estado_jogo, CLIENTE):
+            encerra_partida('vitoria')
             break
 
         # Pega jogada do cliente.
