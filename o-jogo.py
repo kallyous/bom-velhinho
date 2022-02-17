@@ -71,7 +71,7 @@ CLIENTE = 'O'
 
 class GameSocket:
     MSGLEN = 12
-    PORT = 6666
+    PORT = 6665
 
     def __init__(self, sock=None):
         if sock is None:
@@ -277,14 +277,14 @@ def servir_partida():
                     print(" Jogada inválida, escolha uma casa livre de 1 a 9.")
                     jogada = seleciona_jogada()
 
-                if desistencia(jogada):
-                    encerra_partida('desistencia-propria')
-                    client_sock.send(estado_jogo)
-                    break
-
                 # Atualiza estado do jogo com nova jogada.
                 estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, SERVIDOR)
                 renderiza_jogo(estado_jogo)
+
+                if desistencia(jogada):
+                    client_sock.send(estado_jogo)
+                    encerra_partida('desistencia-propria')
+                    break
 
                 # Verifica condição de vitória novamente.
 
