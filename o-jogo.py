@@ -68,10 +68,20 @@ JOGADA
 ESTADO_INICIAL = b'1 0         '
 SERVIDOR = 'X'
 CLIENTE = 'O'
+PADROES_VITORIA = [
+    '111......',
+    '1..1..1..',
+    '1...1...1',
+    '.1..1..1.',
+    '..1.1.1..',
+    '..1..1..1',
+    '...111...',
+    '......111'
+]
 
 class GameSocket:
     MSGLEN = 12
-    PORT = 6665
+    PORT = 6667
 
     def __init__(self, sock=None):
         if sock is None:
@@ -183,6 +193,25 @@ def desistencia(jogada):
     return False
 
 
+def padrao_de_jogo(estado, jogador):
+    tabuleiro = estado[3:].upper()
+    tabuleiro = tabuleiro.replace(jogador.upper(), '1')
+    tabuleiro = tabuleiro.replace(SERVIDOR.upper(), '0')
+    tabuleiro = tabuleiro.replace(CLIENTE.upper(), '0')
+    tabuleiro = tabuleiro.replace(' ', '0')
+    return tabuleiro
+
+
+def padrao_vitorioso(padrao):
+    print(" DEBUG padrao_vitorioso()\n", "123456789\n", padrao)
+    return False
+
+
+def vitoria(estado, jogador):
+    padrao = padrao_de_jogo(estado, jogador)
+    return padrao_vitorioso(padrao)
+
+
 def encerra_partida(motivo):
     if motivo == 'desistencia-propria':
         print("\n DERROTA...\n Você desistiu da partida.\n")
@@ -221,6 +250,11 @@ def atualiza_estado_jogo(estado, jogada, jogador):
         # o deslocamento/offset pra string do estado de jogo.
         i = int(jogada.strip()) + 2
         estado = estado[:i] + jogador + estado[i+1:]
+
+        # Detecta se jogada atual resultou em vitória do jogador.
+        if vitoria(estado, jogador):
+            estado = estado[:1] + jogador + estado[2:]
+
 
     return estado.encode('utf-8')
 
