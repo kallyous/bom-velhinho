@@ -158,7 +158,7 @@ def renderiza_jogo(estado):
     print(render)
 
     if meta[1] != ' ':
-        print("\nVitória de", estado[0].upper(), '\n')
+        print("\nVitória de", estado[1].upper(), '\n')
     else:
         print("\n Escolha sua próxima jogada pela numeração das casas:")
         print("\n   1 | 2 | 3\n   ---------\n   4 | 5 | 6\n   ---------\n   7 | 8 | 9\n")
@@ -204,6 +204,14 @@ def padrao_de_jogo(estado, jogador):
 
 def padrao_vitorioso(padrao):
     print(" DEBUG padrao_vitorioso()\n", "123456789\n", padrao)
+    for pv in PADROES_VITORIA:
+        acerto = 0
+        for i in range(0, len(pv)):
+            if padrao[i] == pv[i]:
+                acerto += 1
+        if acerto == 3:
+            print("DEBUG padrao_vitorioso() - VITORIA\n", padrao, "\n", pv, "\n")
+            return True
     return False
 
 
