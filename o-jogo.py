@@ -69,7 +69,7 @@ ESTADO_INICIAL = b'1 0         '
 
 class GameSocket:
     MSGLEN = 12
-    PORT = 6666
+    PORT = 6667
 
     def __init__(self, sock=None):
         if sock is None:
@@ -145,6 +145,28 @@ def rendereiza_jogo(estado):
         print("\n   1 | 2 | 3\n   ---------\n   4 | 5 | 6\n   ---------\n   7 | 8 | 9\n")
 
 
+def seleciona_jogada():
+
+    while True:
+        casa_valida = True
+
+        try:
+            casa = input(" Onde marcar? ").strip()
+            casa = int(casa)
+            if casa in range(1, 10):
+                jogada = f"   {casa}        "
+            else:
+                casa_valida = False
+        except ValueError:
+            casa_valida = False
+
+        if casa_valida:
+            return jogada.encode('utf-8')
+        else:
+            print("", casa, "não é um valor válido, escolha uma casa de 1 a 9.\n")
+
+
+
 def valida_jogada(estado, jogada):
     return True
 
@@ -174,8 +196,8 @@ def servir_partida():
 
     # Laço para aguardar conexões de clientes.
     while True:
-
         try:
+
             # Aceita conexão vinda de fora no nosso amado socket.
             client_sock, address = serv_sock.accept()
             print(" Conexão estabelecida com", address)
@@ -203,16 +225,17 @@ def servir_partida():
                 # Checa condição de vitória e, se for o caso, encerra jogo.
 
                 # Se jogo continua, pega jogada do jogador local.
+                jogada = seleciona_jogada()
 
-                # Atualiza estado do jogo e checa condição de vitória novamente.
+                # Verifica se jogada é válida.
+                while not valida_jogada(estado_jogo, jogada):
+                    print(" Esta jogada é inválida.")
+                    jogada = seleciona_jogada()
 
-                # Envia estado do jogo atualizado para o jogador remoto.
+                # Verifica condição de vitória novamente.
 
         except Exception:
             break
-
-        # TEMPORÁRIO PARA DEV
-        break
 
     print("\n Partida encerrada.")
 
@@ -251,26 +274,11 @@ def conectar_partida():
         # Interpreta estado de jogo e exibe ao jogador.
         rendereiza_jogo(estado_jogo)
 
-        while True:
-            casa_valida = True
+        # Pega jogada do cliente.
+        jogada = seleciona_jogada()
 
-            try:
-                casa = input(" Onde marcar? ").strip()
-                casa = int(casa)
-                if casa in range(1, 10):
-                    jogada = f"   {casa}        "
-                else:
-                    casa_valida = False
-            except ValueError:
-                casa_valida = False
-
-            if casa_valida:
-                break
-            else:
-                print("", casa, "não é um valor válido, escolha uma casa de 1 a 9.\n")
-
-        client_sock.send(jogada.encode('utf-8'))
-        break
+        # Envia jogada ao servidor
+        client_sock.send(jogada)
 
     # Importante fechar os sockets.
     try:
