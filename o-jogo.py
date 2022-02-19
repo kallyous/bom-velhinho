@@ -81,7 +81,7 @@ PADROES_VITORIA = [
 
 class GameSocket:
     MSGLEN = 12
-    PORT = 6667
+    PORT = 6666
 
     def __init__(self, sock=None):
         if sock is None:
