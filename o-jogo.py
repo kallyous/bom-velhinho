@@ -509,7 +509,7 @@ def menu_principal():
    2. Conectar a jogo existente
    3. Créditos
 
- Entre qualter outra coisa para encerrar o jogo.
+ Entre qualquer outra coisa para encerrar o jogo.
     """
 
     print(TEXTO_PRINCIPAL)
