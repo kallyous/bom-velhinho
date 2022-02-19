@@ -471,7 +471,7 @@ def conectar_partida():
 
 
 def creditos():
-    print("\n Feito por Lucas Carvalho e Vitor Magno.\n ( •_•) ( •_•)>⌐■-■ (⌐■_■)")
+    print("\n\n\n ( •_•) ( •_•)>⌐■-■ (⌐■_■)\n Feito por Lucas Carvalho e Vitor Magno.\n\n")
 
 
 def menu_principal():
