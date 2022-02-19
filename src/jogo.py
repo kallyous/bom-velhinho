@@ -17,12 +17,16 @@ PADROES_VITORIA = [
 ]
 
 
-E_BOAS_VINDAS = ''
-E_INPUT = ''
-E_DESISTENCIA = ''
-E_FELIZ_VITORIA = ''
-E_TRISTE_DERROTA = ''
-E_EMPATE = ''
+E_BOAS_VINDAS = '~(˘▾˘~)'
+E_DESPEDIDA = '(•‿•)/'
+E_INPUT = '(•‿•)/'
+E_JOGADA = '(ง •̀_•́)ง'
+E_DESISTENCIA = '(Ｔ▽Ｔ)'
+E_FELIZ_VITORIA = '\\(^o^)/'
+E_TRISTE_DERROTA = '(T_T)'
+E_EMPATE = '\'(ಠ_ಠ)'
+E_ERRO = '(✖﹏✖)'
+E_INVALIDO = '(o_O) ?'
 
 
 class GameSocket:
@@ -100,17 +104,18 @@ def renderiza_jogo(estado, turno_real=True):
     print(render)
 
 
-def seleciona_jogada():
+def seleciona_jogada(jogador_atual):
 
     jogada_valida = False
     while not jogada_valida:
 
         try:
-            print("\n Escolha onde marcar no tabuleiro pela numeração das casas.")
+            print(f" Sua marca é {jogador_atual}.")
+            print(" Escolha onde marcar no tabuleiro pela numeração das casas.")
             print(" D, d, [Ctrl]+[C] ou [Ctrl]+[D] abandonam a partida.")
             print("\n Numeração das casas:")
             print("\n   1 | 2 | 3\n   ---------\n   4 | 5 | 6\n   ---------\n   7 | 8 | 9")
-            jogada = input("\n Marcar em: ").strip().lower()
+            jogada = input(f"\n {E_JOGADA}\n Marcar em: ").strip().lower()
             if jogada == 'd':
                 jogada_valida = True
             else:
@@ -118,11 +123,13 @@ def seleciona_jogada():
                 if jogada in range(1, 10):
                     jogada_valida = True
                 else:
-                    print("\n Posições válidas são de 1 a 9.")
+                    print(f"\n {E_INVALIDO}")
+                    print(" Posições válidas são de 1 a 9.")
                     print(" E a posição escolhida deve estar desocupada.\n")
 
         except (ValueError, KeyboardInterrupt, EOFError) as ex:
             if type(ex) is ValueError:
+                print(f"\n {E_INVALIDO}")
                 print(" Essa escolha não é um valor válido.")
                 print(" Escolha uma casa de 1 a 9 para marcar, ou então")
                 print(" use D, d, [Ctrl]+[C] ou [Ctrl]+[D] para abandonar partida.")
@@ -213,17 +220,17 @@ def fim_de_jogo(estado, jogador, cliente_sock=None):
 
 def encerra_partida(motivo=None):
     if motivo == 'desistencia-propria':
-        print("\n DERROTA...\n Você desistiu da partida.\n")
+        print(f"\n {E_TRISTE_DERROTA} DERROTA...\n Você desistiu da partida.\n")
     elif motivo == 'desistencia-oponente':
-        print("\n VITÓRIA!\n O adversário desistiu da partida.\n")
+        print(f"\n {E_FELIZ_VITORIA} VITÓRIA!\n O adversário desistiu da partida.\n")
     elif motivo == 'empate':
-        print("\n EMPATE.\n Ninguém venceu essa.\n")
+        print(f"\n {E_EMPATE} EMPATE.\n Ninguém venceu essa.\n")
     elif motivo == 'vitoria':
-        print("\n VITÓRIA!\n Você derrotou seu oponente.\n")
+        print(f"\n {E_FELIZ_VITORIA} VITÓRIA!\n Você derrotou seu oponente.\n")
     elif motivo == 'derrota':
-        print("\n DERROTA...\n O Jogo. Você perdeu. Sim.\n")
+        print(f"\n {E_TRISTE_DERROTA} DERROTA...\n O Jogo. Você perdeu. Sim.\n")
     else:
-        print('\n Jogo encerrado por motivo desconhecido.\n')
+        print(f'\n {E_INVALIDO}\n Jogo encerrado por motivo desconhecido.\n')
 
     input(" Pressione [Enter] pra continuar.")
 
@@ -292,7 +299,7 @@ def servir_partida():
         serv_sock.bind(('', GameSocket.PORT))
         serv_sock.listen(2)
     except OSError:
-        print(f"\n ERRO:\n Falha ao vincular porta {GameSocket.PORT}, verifique se esta não está em uso por outra aplicação ou bloqueada.")
+        print(f"\n {E_ERRO} ERRO:\n Falha ao vincular porta {GameSocket.PORT}, verifique se esta não está em uso por outra aplicação ou bloqueada.")
         print(" Note que portas recentemente usadas costumam levar até 2min para serem liberadas pelo S.O. para reuso.\n")
         return
 
@@ -339,9 +346,9 @@ def servir_partida():
 
                     # Se jogo continua, pega jogada do jogador local e valida
                     # contra o estado atual do jogo.
-                    jogada = seleciona_jogada()
+                    jogada = seleciona_jogada(SERVIDOR)
                     while not jogada_valida(estado_jogo, jogada):
-                        print(" Jogada inválida, escolha uma casa livre de 1 a 9.")
+                        print(f"\n {E_INVALIDO}\n Jogada inválida, escolha uma casa livre de 1 a 9.")
                         jogada = seleciona_jogada()
 
                     # Atualiza estado do jogo com nova jogada.
@@ -359,13 +366,21 @@ def servir_partida():
                         break
 
                 except (OSError, RuntimeError) as ex:
-                    print("\n ERRO:\n Conexão com cliente perdida, voltando ao menu principal.\n")
+                    print(f"\n {E_ERRO} ERRO:\n Conexão com cliente perdida, voltando ao menu principal.\n")
+                    run = False
+                    break
+
+                except (OSError, RuntimeError, KeyboardInterrupt) as ex:
+                    if type(ex) is KeyboardInterrupt:
+                        encerra_partida('desistencia-propria')
+                    else:
+                        print(f"\n {E_ERRO} ERRO:\n Conexão com cliente perdida. Voltando ao menu principal.\n")
                     run = False
                     break
 
         except (KeyboardInterrupt, EOFError, OSError, RuntimeError) as ex:
             if type(ex) in (OSError, RuntimeError):
-                print("\n ERRO:\n Falha de comunicação com cliente.")
+                print(f"\n {E_ERRO} ERRO:\n Falha de comunicação com cliente.")
             print("\n Voltando ao menu principal.\n")
             run = False
             break
@@ -396,7 +411,7 @@ def conectar_partida():
         print(" Conexão estabelecida, iniciando partida.\n")
     except (OSError, RuntimeError, KeyboardInterrupt) as ex:
         if type(ex) is not KeyboardInterrupt:
-            print("\n ERRO:\n Não foi possível conectar-se ao servidor.")
+            print(f"\n {E_ERRO} ERRO:\n Não foi possível conectar-se ao servidor.")
             print(f" Verifique o IP e se a porta {GameSocket.PORT} está disponível e desbloqueada.")
         print("\n Voltando ao menu principal.\n")
         return
@@ -421,9 +436,9 @@ def conectar_partida():
                 break
 
             # Pega jogada do cliente.
-            jogada = seleciona_jogada()
+            jogada = seleciona_jogada(CLIENTE)
             while not jogada_valida(estado_jogo, jogada):
-                print(" Jogada inválida, escolha uma casa livre de 1 a 9.")
+                print(f"\n {E_INVALIDO}\n Jogada inválida, escolha uma casa livre de 1 a 9.")
                 jogada = seleciona_jogada()
 
             # Envia jogada ao servidor
@@ -439,8 +454,11 @@ def conectar_partida():
             print(" Enviado ao servidor:")
             renderiza_jogo(estado_jogo, False)
 
-        except (OSError, RuntimeError):
-            print("\n ERRO:\n Conexão com servidor perdida. Voltando ao menu principal.\n")
+        except (OSError, RuntimeError, KeyboardInterrupt) as ex:
+            if type(ex) is KeyboardInterrupt:
+                encerra_partida('desistencia-propria')
+            else:
+                print(f"\n {E_ERRO} ERRO:\n Conexão com servidor perdida. Voltando ao menu principal.\n")
             break
 
     # Importante fechar os sockets.
@@ -453,14 +471,14 @@ def conectar_partida():
 
 
 def creditos():
-    print("Feito por Lucas Carvalho e Vitor Magno.")
+    print("\n Feito por Lucas Carvalho e Vitor Magno.\n ( •_•) ( •_•)>⌐■-■ (⌐■_■)")
 
 
 def menu_principal():
 
-    TEXTO_PRINCIPAL = """
+    TEXTO_PRINCIPAL = f"""
  --- BOM VELHINHO ---
- Jogo da velha em seu terminal! \\(>.<)/
+ Jogo da velha em seu terminal! {E_BOAS_VINDAS}
 
  Opções:
    1. Servir novo jogo
@@ -472,7 +490,7 @@ def menu_principal():
 
     print(TEXTO_PRINCIPAL)
 
-    return input("(•‿•)/ : ")
+    return input(f"{E_INPUT} : ")
 
 
 def main():
@@ -496,7 +514,7 @@ def main():
         else:
             opcao = -1
 
-    print("\n Encerrando jogo... (•‿•)/ bye\n")
+    print(f"\n Encerrando jogo...{E_DESPEDIDA}  bye\n")
 
 
 if __name__ == '__main__':
