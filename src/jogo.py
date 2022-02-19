@@ -1,69 +1,6 @@
 import socket
 from time import sleep
 
-""" Regra/Protocolo de comunicação da aplicação:
-
-INICIO
-
-1. Quando o cliente se conecta, o servidor imediatamente envia o estado inicial
-   do jogo. Após isso o servidor aguarda a jogada do cliente. O cliente sempre
-   joga primeiro. O servidor usa o símbolo X e o cliente usa O para marcarem
-   suas jogadas.
-
-2. As mensagens trocadas entre cliente e servidor são compostas por uma string
-   (byte object) de 12 caracteres, cada caracter um com um significado próprio
-   a ser especificado a seguir.
-
-3. O servidor envia o estado de jogo nesses 12 caracteres. O jogador informa
-   sua jogada.
-
-
-ESTADO DE JOGO
-
-[0] O caracter na posição 1 indica se a última jogada efetuada pelo cliente foi
-válida ou ilegal. Nesse contexto o caracter estará definido para 1 se a jogada
-foi válida. No caso de 0 (jogada anterior foi inválida) o estado de jogo não
-é atualizado pelo servidor e sua resposta apenas defini esse caracter para 0.
-O servidor usa também esse caracter para indicar desistência.
-
-[1] O segundo caracter indica se uma condição de fim de jogo foi alcançada.
-Se um jogador venceu, o caracter 2 será definido para o símbolo do vencedor
-(i.e. X ou O), ou para E caso tenha-se alcançado um empate. Em outros casos,
-será o caracter de espaço em branco.
-
-[2] O terceiro caracter informa o número da jogada. É incrementado com cada
-jogada válida efetuada. Vai de 0 (estado inicial do jogo) a 9.
-
-[3-11] Os últimos 9 caracteres acomodam o símbolo marcado pelo jogador nas
-respectivas posições. Um caracter na posição aᵢⱼ com espaço em branco indica
-que nenhum jogador marcou a casa deste índice. Caso contrário, terá o símbolo
-do jogador que marcou.
-
-A ordem das posições é contada de forma crescente da esquerda para a direita e
-de cima para baxo, como descrito a seguir:
-
-    1 = a₁₁   2 = a₂₁   3 = a₃₁
-    4 = a₁₂   5 = a₂₂   6 = a₃₂
-    7 = a₁₃   8 = a₂₃   9 = a₃₃
-
-
-JOGADA
-
-1. Para informar sua jogada, o cliente define a string inteira para espaços em
-   branco, com exeção do quarto caracter (i.e. índice 3). Este será o caracter
-   de jogada.
-
-2. Para informar que desistiu da partida, o cliente deverá enviar a letra d
-   ou D no caracter de jogada.
-
-3. Para informar em qual casa deseja por sua marca, o cliente deve informar o
-   número do índice desejado no caracter de jogada.
-   Se a casa informada já estiver ocupada ou não existir, o servidor rejeitará
-   a jogada reenviando o mesmo estado de jogo, porém com o caracter de
-   posição 1 (i.e. índice 0) definido para 0. O mesmo será feito se o caracter
-   de jogada não for nem um número nem a letra d/D .
-
-"""
 
 ESTADO_INICIAL = b'1 1         '
 SERVIDOR = 'X'
@@ -78,6 +15,7 @@ PADROES_VITORIA = [
     '...111...',
     '......111'
 ]
+
 
 class GameSocket:
     MSGLEN = 12
