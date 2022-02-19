@@ -17,6 +17,14 @@ PADROES_VITORIA = [
 ]
 
 
+E_BOAS_VINDAS = ''
+E_INPUT = ''
+E_DESISTENCIA = ''
+E_FELIZ_VITORIA = ''
+E_TRISTE_DERROTA = ''
+E_EMPATE = ''
+
+
 class GameSocket:
     MSGLEN = 12
     PORT = 6666
@@ -98,20 +106,29 @@ def seleciona_jogada():
     while not jogada_valida:
 
         try:
-            print("\n numeração das casas:")
-            print("\n   1 | 2 | 3\n   ---------\n   4 | 5 | 6\n   ---------\n   7 | 8 | 9\n")
-            jogada = input(" Marcar em: ").strip().lower()
-            if jogada != 'd':
+            print("\n Escolha onde marcar no tabuleiro pela numeração das casas.")
+            print(" D, d, [Ctrl]+[C] ou [Ctrl]+[D] abandonam a partida.")
+            print("\n Numeração das casas:")
+            print("\n   1 | 2 | 3\n   ---------\n   4 | 5 | 6\n   ---------\n   7 | 8 | 9")
+            jogada = input("\n Marcar em: ").strip().lower()
+            if jogada == 'd':
+                jogada_valida = True
+            else:
                 jogada = int(jogada)
                 if jogada in range(1, 10):
                     jogada_valida = True
-            else:
-                jogada_valida = True
+                else:
+                    print("\n Posições válidas são de 1 a 9.")
+                    print(" E a posição escolhida deve estar desocupada.\n")
 
-        except ValueError:
-            print("", jogada, "não é um valor válido.")
-            print(" Escolha uma casa de 1 a 9 para marcar ou")
-            print(" use D para abandonar partida.")
+        except (ValueError, KeyboardInterrupt, EOFError) as ex:
+            if type(ex) is ValueError:
+                print(" Essa escolha não é um valor válido.")
+                print(" Escolha uma casa de 1 a 9 para marcar, ou então")
+                print(" use D, d, [Ctrl]+[C] ou [Ctrl]+[D] para abandonar partida.")
+            elif type(ex) in (KeyboardInterrupt, EOFError):
+                jogada = 'd'
+                jogada_valida = True
 
     jogada = f"   {jogada}        "
     print()
@@ -269,17 +286,22 @@ def atualiza_estado_jogo(estado, jogada, jogador):
 def servir_partida():
     print("\n #1 Servindo o jogo...")
 
-    # Prepara socket do servidor para servir jogo.
-    serv_sock = GameSocket()
-    serv_sock.bind(('', GameSocket.PORT))
-    serv_sock.listen(2)
+    try:
+        # Prepara socket do servidor para servir jogo.
+        serv_sock = GameSocket()
+        serv_sock.bind(('', GameSocket.PORT))
+        serv_sock.listen(2)
+    except OSError:
+        print(f"\n ERRO:\n Falha ao vincular porta {GameSocket.PORT}, verifique se esta não está em uso por outra aplicação ou bloqueada.")
+        print(" Note que portas recentemente usadas costumam levar até 2min para serem liberadas pelo S.O. para reuso.\n")
+        return
 
     # Laço para aguardar conexões de clientes.
-    while True:
+    run = True
+    while run:
         print("\n Aguardando outro jogador.\n Entre [Ctrl]+[C] para cancelar.")
 
         try:
-
             # Aceita conexão vinda de fora no nosso amado socket.
             client_sock, address = serv_sock.accept()
             print(" Conexão estabelecida com", address, "iniciando jogo.\n")
@@ -290,64 +312,68 @@ def servir_partida():
             print(" Aguardando jogada inicial do cliente.\n")
 
             # Rotina de servidor do jogo vem aqui.
-            while True:
+            while run:
 
-                # Envia estado atual do jogo.
-                client_sock.send(estado_jogo)
-
-                # Recebe jogada do cliente e checa por desistência.
-                jogada = client_sock.recv()
-                if desistencia(jogada):
-                    encerra_partida('desistencia-oponente')
-                    break
-
-                #Verifica se jogada é válida.
-                if not jogada_valida(estado_jogo, jogada):
-                    # Marca estado como inválido antes de reenviar ao cliente.
-                    continue
-
-                # Atualiza e renderiza estado do jogo.
-                estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, CLIENTE)
-                renderiza_jogo(estado_jogo)
-
-                # Checa condição de vitória e, se for o caso, encerra jogo.
-                if fim_de_jogo(estado_jogo, SERVIDOR, client_sock):
-                    break
-
-                # Se jogo continua, pega jogada do jogador local e valida
-                # contra o estado atual do jogo.
-                jogada = seleciona_jogada()
-                while not jogada_valida(estado_jogo, jogada):
-                    print(" Jogada inválida, escolha uma casa livre de 1 a 9.")
-                    jogada = seleciona_jogada()
-
-                # Atualiza estado do jogo com nova jogada.
-                estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, SERVIDOR)
-                renderiza_jogo(estado_jogo, False)
-
-                # Checa se jogar local desistiu.
-                if desistencia(jogada):
+                try:
+                    # Envia estado atual do jogo.
                     client_sock.send(estado_jogo)
-                    encerra_partida('desistencia-propria')
+
+                    # Recebe jogada do cliente e checa por desistência.
+                    jogada = client_sock.recv()
+                    if desistencia(jogada):
+                        encerra_partida('desistencia-oponente')
+                        break
+
+                    #Verifica se jogada é válida.
+                    if not jogada_valida(estado_jogo, jogada):
+                        # Marca estado como inválido antes de reenviar ao cliente.
+                        continue
+
+                    # Atualiza e renderiza estado do jogo.
+                    estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, CLIENTE)
+                    renderiza_jogo(estado_jogo)
+
+                    # Checa condição de vitória e, se for o caso, encerra jogo.
+                    if fim_de_jogo(estado_jogo, SERVIDOR, client_sock):
+                        break
+
+                    # Se jogo continua, pega jogada do jogador local e valida
+                    # contra o estado atual do jogo.
+                    jogada = seleciona_jogada()
+                    while not jogada_valida(estado_jogo, jogada):
+                        print(" Jogada inválida, escolha uma casa livre de 1 a 9.")
+                        jogada = seleciona_jogada()
+
+                    # Atualiza estado do jogo com nova jogada.
+                    estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, SERVIDOR)
+                    renderiza_jogo(estado_jogo, False)
+
+                    # Checa se jogar local desistiu.
+                    if desistencia(jogada):
+                        client_sock.send(estado_jogo)
+                        encerra_partida('desistencia-propria')
+                        break
+
+                    # Verifica condição de vitória novamente.
+                    if fim_de_jogo(estado_jogo, SERVIDOR, client_sock):
+                        break
+
+                except (OSError, RuntimeError) as ex:
+                    print("\n ERRO:\n Conexão com cliente perdida, voltando ao menu principal.\n")
+                    run = False
                     break
 
-                # Verifica condição de vitória novamente.
-                if fim_de_jogo(estado_jogo, SERVIDOR, client_sock):
-                    break
-
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError, OSError, RuntimeError) as ex:
+            if type(ex) in (OSError, RuntimeError):
+                print("\n ERRO:\n Falha de comunicação com cliente.")
+            print("\n Voltando ao menu principal.\n")
+            run = False
             break
-
-        # Importante fechar os sockets.
-        try:
-            client_sock.shutdown(2)
-            client_sock.close()
-        # Se o servidor fechou a conexão antes, não quebra o jogo.
-        except Exception:
-            pass
 
     # Importante fechar os sockets.
     try:
+        client_sock.shutdown(2)
+        client_sock.close()
         serv_sock.shutdown(2)
         serv_sock.close()
     # Se o socket fechou prematuramente, não quebra o jogo.
@@ -357,50 +383,65 @@ def servir_partida():
 
 def conectar_partida():
     print("\n #2 Conectando a partida...")
-    serv_addr = input("\n Informar endereço do servidor: ")
+    try:
+        serv_addr = input("\n Informar endereço do servidor: ")
+    except (KeyboardInterrupt, EOFError):
+        print("\n Cancelado pelo usuário, voltando ao menu principal.\n")
+        return
 
-    # Prepara socket do cliente e conecta com servidor no endereço especificado.
-    client_sock = GameSocket()
-    client_sock.connect(serv_addr, GameSocket.PORT)
-
-    print(" Conexão estabelecida, iniciando partida.\n")
+    try:
+        # Prepara socket do cliente e conecta com servidor no endereço especificado.
+        client_sock = GameSocket()
+        client_sock.connect(serv_addr, GameSocket.PORT)
+        print(" Conexão estabelecida, iniciando partida.\n")
+    except (OSError, RuntimeError, KeyboardInterrupt) as ex:
+        if type(ex) is not KeyboardInterrupt:
+            print("\n ERRO:\n Não foi possível conectar-se ao servidor.")
+            print(f" Verifique o IP e se a porta {GameSocket.PORT} está disponível e desbloqueada.")
+        print("\n Voltando ao menu principal.\n")
+        return
 
     # Rotina de cliente do jogo vem aqui.
     while True:
 
-        # Recebe do servidor o estado do jogo.
-        estado_jogo = client_sock.recv()
+        try:
+            # Recebe do servidor o estado do jogo.
+            estado_jogo = client_sock.recv()
 
-        # Interpreta estado de jogo e exibe ao jogador.
-        renderiza_jogo(estado_jogo)
+            # Interpreta estado de jogo e exibe ao jogador.
+            renderiza_jogo(estado_jogo)
 
-        # Servidor desistiu da partida.
-        if desistencia(estado_jogo):
-            encerra_partida('desistencia-oponente')
-            break
+            # Servidor desistiu da partida.
+            if desistencia(estado_jogo):
+                encerra_partida('desistencia-oponente')
+                break
 
-        # Verifica condição de vitória e encerra o jogo se for o caso.
-        if fim_de_jogo(estado_jogo, CLIENTE, client_sock):
-            break
+            # Verifica condição de vitória e encerra o jogo se for o caso.
+            if fim_de_jogo(estado_jogo, CLIENTE, client_sock):
+                break
 
-        # Pega jogada do cliente.
-        jogada = seleciona_jogada()
-        while not jogada_valida(estado_jogo, jogada):
-            print(" Jogada inválida, escolha uma casa livre de 1 a 9.")
+            # Pega jogada do cliente.
             jogada = seleciona_jogada()
+            while not jogada_valida(estado_jogo, jogada):
+                print(" Jogada inválida, escolha uma casa livre de 1 a 9.")
+                jogada = seleciona_jogada()
 
-        # Envia jogada ao servidor
-        client_sock.send(jogada)
+            # Envia jogada ao servidor
+            client_sock.send(jogada)
 
-        # Saída antecipada.
-        if desistencia(jogada):
-            encerra_partida('desistencia-propria')
+            # Saída antecipada.
+            if desistencia(jogada):
+                encerra_partida('desistencia-propria')
+                break
+
+            # Exibe suposto estado atual do jogo (o servidor é o árbitro final).
+            estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, CLIENTE)
+            print(" Enviado ao servidor:")
+            renderiza_jogo(estado_jogo, False)
+
+        except (OSError, RuntimeError):
+            print("\n ERRO:\n Conexão com servidor perdida. Voltando ao menu principal.\n")
             break
-
-        # Exibe suposto estado atual do jogo (o servidor é o árbitro final).
-        estado_jogo = atualiza_estado_jogo(estado_jogo, jogada, CLIENTE)
-        print(" Enviado ao servidor:")
-        renderiza_jogo(estado_jogo, False)
 
     # Importante fechar os sockets.
     try:
@@ -415,31 +456,10 @@ def creditos():
     print("Feito por Lucas Carvalho e Vitor Magno.")
 
 
-def main():
-
-    opcao = 0
-
-    while opcao in [0, 1, 2, 3]:
-
-        try: opcao = int(menu_principal())
-        except ValueError: opcao = -1
-
-        if int(opcao) == 1:
-            servir_partida()
-        elif int(opcao) == 2:
-            conectar_partida()
-        elif int(opcao) == 3:
-            creditos()
-        else:
-            opcao = -1
-
-    print("\n Encerrando jogo... (•‿•)/ bye\n")
-
-
 def menu_principal():
 
     TEXTO_PRINCIPAL = """
- --- O BOM VELHINHO ---
+ --- BOM VELHINHO ---
  Jogo da velha em seu terminal! \\(>.<)/
 
  Opções:
@@ -453,6 +473,30 @@ def menu_principal():
     print(TEXTO_PRINCIPAL)
 
     return input("(•‿•)/ : ")
+
+
+def main():
+
+    opcao = 0
+
+    while opcao in [0, 1, 2, 3]:
+
+        try:
+            opcao = int(menu_principal())
+        except (ValueError, KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if int(opcao) == 1:
+            servir_partida()
+        elif int(opcao) == 2:
+            conectar_partida()
+        elif int(opcao) == 3:
+            creditos()
+        else:
+            opcao = -1
+
+    print("\n Encerrando jogo... (•‿•)/ bye\n")
 
 
 if __name__ == '__main__':
