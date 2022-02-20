@@ -13,7 +13,7 @@ Jogo da velha no terminal em Python, para avaliação de Redes de Computadores -
 
 1. [Instalação do Python](https://www.python.org/downloads/) - É necessário ter o Python 3.7 ou posterior devidamente instalado e funcional nas máquinas a rodar o jogo:
 2. Navegar até a pasta raiz do projeto pelo terminal.
-3. Dentro da pasta raiz do propjeto, executar o comando `python3 src/jogo.py` para iniciar a aplicação.  
+3. Dentro da pasta raiz do projeto, executar o comando `python3 src/jogo.py` para iniciar a aplicação.  
 Alguns sistemas aceitam `python` como atalho para `python3`, na dúvida verifique com `python --version` e `python3 --version`. Isso informará a versão do python chamada por estes comandos.
 
 ---
